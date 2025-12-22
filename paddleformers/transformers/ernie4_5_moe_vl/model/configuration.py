@@ -17,7 +17,6 @@ import json
 from typing import Optional, Union
 
 from paddleformers.transformers.configuration_utils import PretrainedConfig
-from paddleformers.utils.log import logger
 
 from .dfnrope.modeling import DFNRopeVisionTransformerConfig
 
@@ -296,7 +295,6 @@ class Ernie4_5_MoeConfig(Ernie4_5_Config):
     def __init__(
         self,
         moe_num_experts: Optional[Union[int, list]] = None,
-        use_recompute_moe=False,
         moe_capacity=[],
         moe_layer_interval=2,
         moe_layer_start_index=0,
@@ -339,7 +337,6 @@ class Ernie4_5_MoeConfig(Ernie4_5_Config):
 
         Args:
             moe_num_experts: Number of experts in MoE layers
-            use_recompute_moe: Whether to use recomputation for MoE layers
             moe_capacity: Capacity configuration for MoE layers
             moe_layer_interval: Interval between MoE layers
             moe_layer_start_index: Starting layer index for MoE
@@ -368,20 +365,11 @@ class Ernie4_5_MoeConfig(Ernie4_5_Config):
             fuse_gate_detach_matmul: Whether to fuse gate detach matmul
             **kwargs: Additional base model configuration parameters
 
-        Note:
-            When use_recompute_moe is True, recompute_granularity will be changed to full_attn.
         """
 
-        if use_recompute_moe:
-            logger.warning(
-                "set `use_recompute_moe`=True, disabling `recompute_granularity=full`, change to full_attn."
-            )
-            if kwargs["recompute"] and kwargs["recompute_granularity"] == "full":
-                kwargs["recompute_granularity"] = "full_attn"
         super().__init__(**kwargs)
 
         self.moe_num_experts = moe_num_experts
-        self.use_recompute_moe = use_recompute_moe
         self.moe_capacity = moe_capacity
         self.moe_aux_loss_lambda = moe_aux_loss_lambda
         self.moe_z_loss_lambda = moe_z_loss_lambda
@@ -420,7 +408,6 @@ class Ernie4_5_MoeConfig(Ernie4_5_Config):
             [
                 "moe_group",
                 "dpo_config",
-                "use_recompute_moe",
                 "enable_delay_scale_loss",
                 "moe_dropout_prob",
                 "moe_all_to_all_dropout",

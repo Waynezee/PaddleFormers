@@ -114,10 +114,7 @@ class ModelArguments:
         default="v2-alltoall-unpad",
         metadata={"help": "moe dispatch use unpad allgather strategy."},
     )
-    use_recompute_moe: Optional[bool] = field(
-        default=False,
-        metadata={"help": "Whether to apply recompute to MoE layers."},
-    )
+
     moe_group_experts: Optional[bool] = field(
         default=False,
         metadata={"help": "Whether to apply group-wise processing to expert gate logits."},

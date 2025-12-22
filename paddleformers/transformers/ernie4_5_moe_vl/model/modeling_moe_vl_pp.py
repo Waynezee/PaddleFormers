@@ -910,7 +910,12 @@ class ErnieDecoderLayerPipe(ErnieMoEDecoderLayer):
             attn_mask_start_row_indices = None
 
         has_gradient = not hidden_states.stop_gradient
-        if self.config.recompute and self.config.recompute_granularity == "full" and has_gradient:
+        if (
+            self.config.recompute_granularity == "full"
+            and self.config.recompute_method == "uniform"
+            and self.config.recompute_num_layers == 1
+            and has_gradient
+        ):
             decoderlayer_act_offload_settings = self.config.get(
                 "decoderlayer_act_offload_settings", {"type": "", "value": ""}
             )
@@ -1631,7 +1636,7 @@ class Ernie4_5_VLMoeForConditionalGenerationPipe(PipelinePretrainedModel, Pipeli
                     key="embed_weight_share",
                     layer_func=ErnieVLEmbeddingPipe,
                     shared_weight_attr="embedding_weight",
-                    use_full_recompute=config.recompute,
+                    use_full_recompute=bool(config.recompute_granularity is not None),
                     config=config,
                 ),
                 "model",
@@ -1641,7 +1646,7 @@ class Ernie4_5_VLMoeForConditionalGenerationPipe(PipelinePretrainedModel, Pipeli
                 LayerDesc(
                     ErnieVLEmbeddingPipe,
                     config=config,
-                    use_full_recompute=config.recompute,
+                    use_full_recompute=bool(config.recompute_granularity is not None),
                 ),
                 "model",
             )
@@ -1649,7 +1654,7 @@ class Ernie4_5_VLMoeForConditionalGenerationPipe(PipelinePretrainedModel, Pipeli
         no_recompute_layers = get_pp_vp_split_layers(config)
 
         def _need_full_recompute(layer_idx):
-            return layer_idx not in no_recompute_layers and config.recompute
+            return layer_idx not in no_recompute_layers and config.recompute_granularity == "full"
 
         for i in range(config.num_hidden_layers):
             self.add_sequential_layer(

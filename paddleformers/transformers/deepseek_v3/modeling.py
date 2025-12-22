@@ -716,7 +716,12 @@ class DeepseekV3Attention(nn.Layer):
         value_states = value_states.transpose(1, 2)
 
         has_gradient = not (query_states.stop_gradient and key_states.stop_gradient and value_states.stop_gradient)
-        if self.enable_recompute and has_gradient and self.recompute_granularity == "core_attn":
+        if (
+            self.recompute_granularity == "selective"
+            and self.recompute_modules is not None
+            and "core_attn" in self.recompute_modules
+            and has_gradient
+        ):
             outputs = recompute(
                 self.attn_func,
                 query_states,
@@ -891,7 +896,12 @@ class DeepseekV3DecoderLayer(nn.Layer):
 
         # Self Attention
         has_gradient = not hidden_states.stop_gradient
-        if self.enable_recompute and has_gradient and self.recompute_granularity == "full_attn":
+        if (
+            self.config.recompute_granularity == "selective"
+            and self.config.recompute_modules is not None
+            and "full_attn" in self.recompute_modules
+            and has_gradient
+        ):
             outputs = recompute(
                 self.self_attn,
                 hidden_states=hidden_states,
@@ -1622,7 +1632,12 @@ class DeepseekV3Model(DeepseekV3PretrainedModel):
                     attn_mask_startend_row_indices,
                     position_embeddings,
                 )
-            elif self.enable_recompute and has_gradient and self.recompute_granularity == "full":
+            elif (
+                self.recompute_granularity == "full"
+                and self.recompute_method == "uniform"
+                and self.recompute_num_layers == 1
+                and has_gradient
+            ):
                 layer_outputs = self.recompute_training_full(
                     decoder_layer,
                     hidden_states,
@@ -2143,6 +2158,16 @@ class DeepseekV3MTPLayerPipe(DeepseekV3MTPLayer):
 
         output_list = [hidden_states_main_model]
         hidden_states = hidden_states_main_model
+
+        decoder_recompute_config = [False for _ in range(self.config.num_nextn_predict_layers)]
+        if self.config.recompute_mtp_granularity == "selective":
+            if "decoder" in self.config.recompute_mtp_modules:
+                decoder_recompute_config = [True for _ in range(self.config.num_nextn_predict_layers)]
+        else:
+            raise ValueError(
+                f"recompute_mtp_granularity = {self.config.recompute_mtp_granularity} is not supported currently"
+            )
+
         for depth in range(self.config.num_nextn_predict_layers):
             inputs_embeds_cur_depth = inputs_embeds_cur_depth_list[depth]
 
@@ -2156,7 +2181,7 @@ class DeepseekV3MTPLayerPipe(DeepseekV3MTPLayer):
                     attn_mask_startend_row_indices=attn_mask_startend_row_indices,
                     position_embeddings=position_embeddings,
                 )
-            elif self.enable_recompute and self.config.recompute_granularity == "full" and has_gradient:
+            elif decoder_recompute_config[depth] and has_gradient:
                 if attn_mask is not None or attn_mask_startend_row_indices is not None:
                     hidden_states = recompute(
                         super().forward,
@@ -2317,7 +2342,12 @@ class DeepseekV3DecoderLayerPipe(DeepseekV3DecoderLayer):
                 attn_mask_startend_row_indices=attn_mask_startend_row_indices,
                 position_embeddings=position_embeddings,
             )
-        elif self.enable_recompute and self.config.recompute_granularity == "full" and has_gradient:
+        elif (
+            self.config.recompute_granularity == "full"
+            and self.config.recompute_method == "uniform"
+            and self.config.recompute_num_layers == 1
+            and has_gradient
+        ):
             hidden_states = recompute(
                 super().forward,
                 hidden_states,

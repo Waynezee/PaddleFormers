@@ -16,7 +16,6 @@
 import json
 from typing import Optional, Union
 
-from ...utils.log import logger
 from ..configuration_utils import PretrainedConfig
 from ..modeling_rope_utils import rope_config_validation, standardize_rope_params
 
@@ -59,7 +58,6 @@ class Ernie4_5_MoeConfig(PretrainedConfig):
         num_key_value_heads=None,
         micro_batch_size=-1,
         moe_num_experts: Optional[Union[int, list]] = 16,
-        use_recompute_moe=False,
         moe_capacity=[64, 64, 64],
         moe_norm_min=1e-12,
         moe_aux_loss_lambda=1e-2,
@@ -125,7 +123,6 @@ class Ernie4_5_MoeConfig(PretrainedConfig):
             num_key_value_heads (int): Number of key/value heads (for Grouped Query Attention)
             micro_batch_size (int): Size of micro batches (-1 for automatic)
             moe_num_experts: Number of experts in MoE layers
-            use_recompute_moe: Whether to use recomputation for MoE layers
             moe_capacity: Capacity configuration for MoE layers
             moe_norm_min: Minimum value for routing normalization
             moe_layer_interval: Interval between MoE layers
@@ -154,16 +151,7 @@ class Ernie4_5_MoeConfig(PretrainedConfig):
             fuse_gate_detach_matmul: Whether to fuse gate detach matmul
             **kwargs: Additional keyword arguments passed to parent class
 
-        Note:
-            When use_recompute_moe is True, recompute_granularity will be changed to full_attn.
         """
-
-        if use_recompute_moe:
-            logger.warning(
-                "set `use_recompute_moe`=True, disabling `recompute_granularity=full`, change to full_attn."
-            )
-            if kwargs["recompute"] and kwargs["recompute_granularity"] == "full":
-                kwargs["recompute_granularity"] = "full_attn"
 
         # Set default for tied embeddings if not specified.
         if "tie_word_embeddings" not in kwargs:
@@ -198,7 +186,6 @@ class Ernie4_5_MoeConfig(PretrainedConfig):
         self.hidden_dropout_prob = hidden_dropout_prob
         self.num_key_value_heads = num_key_value_heads
         self.moe_num_experts = moe_num_experts
-        self.use_recompute_moe = use_recompute_moe
         self.moe_capacity = moe_capacity
         self.moe_norm_min = moe_norm_min
         self.moe_aux_loss_lambda = moe_aux_loss_lambda
@@ -248,7 +235,6 @@ class Ernie4_5_MoeConfig(PretrainedConfig):
                 "max_sequence_length",
                 "moe_group",
                 "ignored_index",
-                "use_recompute_moe",
                 "use_rmsnorm",
                 "use_recompute_mtp",
                 "sinkhorn_2gate",

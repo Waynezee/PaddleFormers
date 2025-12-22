@@ -40,8 +40,6 @@ class PaddleOCRVisionConfig(PretrainedConfig):
         spatial_merge_size=2,
         temporal_patch_size=2,
         tokens_per_second=2,
-        recompute=False,
-        recompute_granularity="core_attn",
         use_sparse_flash_attn=False,
         _attn_implementation="eager",
         **kwargs,
@@ -61,8 +59,6 @@ class PaddleOCRVisionConfig(PretrainedConfig):
         self.spatial_merge_size = spatial_merge_size
         self.temporal_patch_size = temporal_patch_size
         self.tokens_per_second = tokens_per_second
-        self.recompute = recompute
-        self.recompute_granularity = recompute_granularity
         self.use_sparse_flash_attn = use_sparse_flash_attn
         self._attn_implementation = _attn_implementation
 
@@ -99,8 +95,6 @@ class PaddleOCRVLConfig(PretrainedConfig):
         use_cache=False,
         use_sparse_flash_attn=False,
         _attn_implementation="eager",
-        recompute=False,
-        recompute_granularity="core_attn",
         fuse_rms_norm=False,
         pad_token_id=0,
         bos_token_id=1,
@@ -141,8 +135,6 @@ class PaddleOCRVLConfig(PretrainedConfig):
         self.use_cache = use_cache
         self.use_sparse_flash_attn = use_sparse_flash_attn
         self._attn_implementation = _attn_implementation
-        self.recompute = recompute
-        self.recompute_granularity = recompute_granularity
         self.fuse_rms_norm = fuse_rms_norm
         self.pad_token_id = pad_token_id
         self.bos_token_id = bos_token_id

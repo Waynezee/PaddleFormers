@@ -531,7 +531,7 @@ class Ernie4_5_MLP(nn.Layer):
 
             column_ln_configs = {}
             if (
-                config.recompute
+                config.recompute_granularity is not None
                 and config.sequence_parallel
                 and config.skip_recompute_ops[layer_idx].get("mlp_column_ln", False)
             ):
@@ -561,7 +561,7 @@ class Ernie4_5_MLP(nn.Layer):
         if config.tensor_model_parallel_size > 1:
             row_ln_configs = {}
             if (
-                config.recompute
+                config.recompute_granularity is not None
                 and config.sequence_parallel
                 and config.skip_recompute_ops[layer_idx].get("mlp_row_ln", False)
             ):
@@ -666,7 +666,7 @@ class Ernie4_5_Attention(nn.Layer):
             ColumnLN = ColumnSequenceParallelLinear if config.sequence_parallel else ColumnParallelLinear
             RowLN = RowSequenceParallelLinear if config.sequence_parallel else RowParallelLinear
             if (
-                config.recompute
+                config.recompute_granularity is not None
                 and config.sequence_parallel
                 and config.skip_recompute_ops[layer_idx].get("attention_column_ln", False)
             ):
@@ -718,7 +718,7 @@ class Ernie4_5_Attention(nn.Layer):
         if config.tensor_model_parallel_size > 1:
             row_ln_configs = {}
             if (
-                config.recompute
+                config.recompute_granularity is not None
                 and config.sequence_parallel
                 and config.skip_recompute_ops[layer_idx].get("attention_row_ln", False)
             ):
@@ -749,7 +749,7 @@ class Ernie4_5_Attention(nn.Layer):
         self.config = config
 
         self._rr_flash_attn = None
-        if config.recompute and config.skip_recompute_ops[layer_idx].get("flash_attn", False):
+        if config.recompute_granularity is not None and config.skip_recompute_ops[layer_idx].get("flash_attn", False):
             self._rr_flash_attn = RefinedRecomputeFunction()
 
         self.set_attn_func()
@@ -818,7 +818,12 @@ class Ernie4_5_Attention(nn.Layer):
             has_gradient = not mix_layer.stop_gradient
         else:
             has_gradient = not (query_states.stop_gradient and key_states.stop_gradient and value_states.stop_gradient)
-        if self.config.recompute and self.config.recompute_granularity == "core_attn" and has_gradient:
+        if (
+            self.config.recompute_granularity == "selective"
+            and self.config.recompute_modules is not None
+            and "core_attn" in self.recompute_modules
+            and has_gradient
+        ):
             assert past_key_value is None, "do not use kv cache in recompute"
             assert not use_cache
             attn_output, attn_weights, past_key_value = recompute(
